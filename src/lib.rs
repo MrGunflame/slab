@@ -1061,7 +1061,7 @@ impl<T> Slab<T> {
         if key == self.entries.len() {
             debug_assert_ne!(self.entries.spare_capacity_mut().len(), 0);
             unsafe {
-                let ptr = self.entries.as_mut_ptr().add(self.len());
+                let ptr = self.entries.as_mut_ptr().add(self.entries.len());
                 ptr.write(Entry::Occupied(val));
                 self.entries.set_len(self.entries.len().unchecked_add(1));
             }
@@ -1628,3 +1628,14 @@ impl<T> ExactSizeIterator for Drain<'_, T> {
 }
 
 impl<T> FusedIterator for Drain<'_, T> {}
+
+#[test]
+fn test_unchecked_insert() {
+    let mut slab = Slab::new();
+    slab.reserve(2);
+    unsafe {
+        let k0 = slab.insert_unchecked(0);
+        let k1 = slab.insert_unchecked(1);
+        slab.remove(k0);
+    }
+}
