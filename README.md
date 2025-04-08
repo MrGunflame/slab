@@ -1,5 +1,7 @@
 # Slab
 
+## Custom branch adding unchecked methods to `Slab`. Not meant to be upstreamed.
+
 Pre-allocated storage for a uniform data type.
 
 [![Crates.io][crates-badge]][crates-url]

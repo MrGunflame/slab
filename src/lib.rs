@@ -818,7 +818,7 @@ impl<T> Slab<T> {
     pub unsafe fn get_unchecked(&self, key: usize) -> &T {
         match *self.entries.get_unchecked(key) {
             Entry::Occupied(ref val) => val,
-            _ => unreachable!(),
+            _ => unsafe { core::hint::unreachable_unchecked() },
         }
     }
 
@@ -850,7 +850,7 @@ impl<T> Slab<T> {
     pub unsafe fn get_unchecked_mut(&mut self, key: usize) -> &mut T {
         match *self.entries.get_unchecked_mut(key) {
             Entry::Occupied(ref mut val) => val,
-            _ => unreachable!(),
+            _ => unsafe { core::hint::unreachable_unchecked() },
         }
     }
 
@@ -972,6 +972,20 @@ impl<T> Slab<T> {
         key
     }
 
+    /// Inserts a value without checking whether enough capacity exists.
+    ///
+    /// # Safety
+    ///
+    /// Enough spare capacity must exist.
+    pub unsafe fn insert_unchecked(&mut self, val: T) -> usize {
+        let key = self.next;
+        unsafe {
+            self.insert_at_unchecked(key, val);
+        }
+
+        key
+    }
+
     /// Returns the key of the next vacant entry.
     ///
     /// This function returns the key of the vacant entry which  will be used
@@ -1038,6 +1052,30 @@ impl<T> Slab<T> {
                 _ => unreachable!(),
             };
             self.entries[key] = Entry::Occupied(val);
+        }
+    }
+
+    unsafe fn insert_at_unchecked(&mut self, key: usize, val: T) {
+        self.len += 1;
+
+        if key == self.entries.len() {
+            debug_assert_ne!(self.entries.spare_capacity_mut().len(), 0);
+            unsafe {
+                let ptr = self.entries.as_mut_ptr().add(self.len());
+                ptr.write(Entry::Occupied(val));
+                self.entries.set_len(self.entries.len().unchecked_add(1));
+            }
+
+            self.next = key + 1;
+        } else {
+            self.next = match unsafe { self.entries.get_unchecked(key) } {
+                Entry::Vacant(next) => *next,
+                _ => unsafe { core::hint::unreachable_unchecked() },
+            };
+
+            unsafe {
+                *self.entries.get_unchecked_mut(key) = Entry::Occupied(val);
+            }
         }
     }
 
