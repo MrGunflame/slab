@@ -1116,6 +1116,27 @@ impl<T> Slab<T> {
         None
     }
 
+    /// Removes a value with the given key and assumes is contained.
+    ///
+    /// # Safety
+    ///
+    /// A value with the given key must have previously been inserted and it must still be present.
+    pub unsafe fn remove_unchecked(&mut self, key: usize) -> T {
+        // Caller guarantees that the key exists.
+        let entry = unsafe { self.entries.get_unchecked_mut(key) };
+        let prev = mem::replace(entry, Entry::Vacant(self.next));
+
+        match prev {
+            Entry::Occupied(val) => {
+                self.len -= 1;
+                self.next = key;
+                val
+            }
+            // Caller guarantees that is never reached.
+            Entry::Vacant(_) => unsafe { core::hint::unreachable_unchecked() },
+        }
+    }
+
     /// Remove and return the value associated with the given key.
     ///
     /// The key is then released and may be associated with future stored
